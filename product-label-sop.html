@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Label Rendering — SOP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --border: #e4e2db;
+    --border-strong: #c8c5bc;
+    --text: #1a1916;
+    --text-2: #5a5853;
+    --text-3: #9a9790;
+    --accent: #1a56a0;
+    --accent-bg: #eaf0f9;
+    --success: #2d7a4f;
+    --success-bg: #eaf4ee;
+    --warn-bg: #fdf4e3;
+    --warn: #8a5a00;
+    --tag-bg: #f0ede6;
+    --tag: #5a5853;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .page-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 2.5rem 1.5rem;
+  }
+
+  .page-header-inner {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 0.5rem;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.35rem;
+  }
+
+  .page-sub {
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  .overall-progress {
+    margin-top: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .overall-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .overall-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  .overall-pct {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-3);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 2.5rem 4rem;
+  }
+
+  .phase-nav {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .phase-btn {
+    padding: 8px 14px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .phase-btn .app-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-3);
+  }
+
+  .phase-btn:hover {
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  .phase-btn.active {
+    background: var(--text);
+    border-color: var(--text);
+    color: #fff;
+  }
+
+  .phase-btn.active .app-tag { color: rgba(255,255,255,0.5); }
+
+  .phase-btn .done-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--success);
+  }
+
+  .phase-btn.active .done-count { color: rgba(255,255,255,0.6); }
+
+  .phase-panel { display: none; }
+  .phase-panel.active { display: block; }
+
+  .phase-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .phase-meta {}
+  .phase-title { font-size: 17px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 3px; }
+  .phase-sub-text { font-size: 13px; color: var(--text-2); }
+
+  .phase-progress {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .phase-pct {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .phase-pct-label {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+
+  .phase-track {
+    width: 80px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+    margin-left: auto;
+  }
+
+  .phase-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 1rem 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+    margin-top: 6px;
+  }
+
+  .section-label:first-child { margin-top: 0; }
+
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, opacity 0.15s;
+    user-select: none;
+  }
+
+  .step:hover { border-color: var(--border-strong); }
+
+  .step.done {
+    background: var(--success-bg);
+    border-color: transparent;
+  }
+
+  .step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-2);
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.15s;
+    background: var(--bg);
+  }
+
+  .step.done .step-num {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+
+  .step.done .step-num .n { display: none; }
+  .step.done .step-num::after { content: "✓"; font-size: 11px; }
+
+  .step-body { flex: 1; min-width: 0; }
+
+  .step-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.45;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .step.done .step-text { color: var(--text-2); }
+
+  .step-note {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 5px;
+    line-height: 1.5;
+  }
+
+  .step.done .step-note { color: var(--text-3); }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tag-qc { background: var(--warn-bg); color: var(--warn); }
+  .tag-export { background: var(--accent-bg); color: var(--accent); }
+  .tag-layer { background: var(--tag-bg); color: var(--tag); }
+
+  code.inline {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--text-2);
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.5rem;
+    align-items: center;
+  }
+
+  button {
+    font-family: var(--sans);
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.12s;
+  }
+
+  .btn-reset {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-2);
+  }
+
+  .btn-reset:hover { background: var(--bg); border-color: var(--border-strong); color: var(--text); }
+
+  .btn-next {
+    padding: 8px 16px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+  }
+
+  .btn-next:hover { background: var(--accent-bg); }
+
+  .naming-section {
+    margin-top: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .naming-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .naming-header-text { font-size: 14px; font-weight: 500; }
+  .naming-header-sub { font-size: 12px; color: var(--text-2); margin-top: 1px; }
+
+  .naming-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+  .naming-rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .naming-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    min-width: 80px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .naming-content { flex: 1; }
+
+  .naming-example {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+
+  .naming-note { font-size: 12px; color: var(--text-2); line-height: 1.45; }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .complete-msg {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    display: none;
+  }
+
+  .complete-check {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--success-bg);
+    border: 1px solid var(--success);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin: 0 auto 1rem;
+    color: var(--success);
+  }
+
+  .complete-msg h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .complete-msg p { font-size: 13px; color: var(--text-2); }
+
+  @media (max-width: 600px) {
+    .page-header { padding: 1.5rem; }
+    .main { padding: 1.5rem; }
+    .phase-btn { flex: 1; }
+    h1 { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="eyebrow">Curecrete Distribution</div>
+    <h1>Product label rendering — SOP</h1>
+    <div class="page-sub">Blender → Photoshop → Illustrator → NetSuite</div>
+    <div class="overall-progress">
+      <div class="overall-track"><div class="overall-fill" id="overall-fill"></div></div>
+      <div class="overall-pct" id="overall-pct">0%</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="phase-nav">
+    <button class="phase-btn active" onclick="switchPhase(0)" id="nav-0">
+      Blender
+      <span class="app-tag">3D render</span>
+      <span class="done-count" id="nav-count-0">0 / 5</span>
+    </button>
+    <button class="phase-btn" onclick="switchPhase(1)" id="nav-1">
+      Photoshop
+      <span class="app-tag">Image edit</span>
+      <span class="done-count" id="nav-count-1">0 / 13</span>
+    </button>
+    <button class="phase-btn" onclick="switchPhase(2)" id="nav-2">
+      Illustrator
+      <span class="app-tag">Final layout</span>
+      <span class="done-count" id="nav-count-2">0 / 4</span>
+    </button>
+    <button class="phase-btn" onclick="switchPhase(3)" id="nav-3">
+      Deliver
+      <span class="app-tag">Send to Garrett</span>
+      <span class="done-count" id="nav-count-3">0 / 2</span>
+    </button>
+  </div>
+
+  <!-- Phase 0: Blender -->
+  <div class="phase-panel active" id="phase-0">
+    <div class="phase-header">
+      <div class="phase-meta">
+        <div class="phase-title">Blender — 3D label render</div>
+        <div class="phase-sub-text">Set up the product mockup and export a clean transparent PNG.</div>
+      </div>
+      <div class="phase-progress">
+        <div class="phase-pct" id="b-pct">0%</div>
+        <div class="phase-pct-label" id="b-label">0 of 5</div>
+        <div class="phase-track"><div class="phase-fill" id="b-fill"></div></div>
+      </div>
+    </div>
+    <div class="steps" id="blender-steps">
+      <div class="step" onclick="toggleStep(this,'b')"><div class="step-num"><span class="n">1</span></div><div class="step-body">
+        <div class="step-text">Export label file from network drive</div>
+        <div class="step-note">Locate the latest label artwork from the shared folder before opening Blender.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'b')"><div class="step-num"><span class="n">2</span></div><div class="step-body">
+        <div class="step-text">Open similar existing project in Blender</div>
+        <div class="step-note">Find a previous product render with a matching container shape to use as a base.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'b')"><div class="step-num"><span class="n">3</span></div><div class="step-body">
+        <div class="step-text">Update container color and map label to product</div>
+        <div class="step-note">Adjust material color to match the product, then apply the label as a texture mapped to the container geometry.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'b')"><div class="step-num"><span class="n">4</span></div><div class="step-body">
+        <div class="step-text">Adjust lighting and check against previous exports <span class="tag tag-qc">QC</span></div>
+        <div class="step-note">Compare side-by-side with older renders to ensure lighting consistency across the product line.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'b')"><div class="step-num"><span class="n">5</span></div><div class="step-body">
+        <div class="step-text">Export as transparent PNG <span class="tag tag-export">PNG</span></div>
+        <div class="step-note">Render with alpha channel enabled. Confirm background is transparent before saving.</div>
+      </div></div>
+    </div>
+    <div class="actions">
+      <button class="btn-reset" onclick="resetPhase('blender-steps','b')">Reset phase</button>
+      <button class="btn-next" onclick="switchPhase(1)">Next: Photoshop →</button>
+    </div>
+  </div>
+
+  <!-- Phase 1: Photoshop -->
+  <div class="phase-panel" id="phase-1">
+    <div class="phase-header">
+      <div class="phase-meta">
+        <div class="phase-title">Photoshop — readability &amp; tone</div>
+        <div class="phase-sub-text">Build the layer stack, adjust tone, then finalize for export.</div>
+      </div>
+      <div class="phase-progress">
+        <div class="phase-pct" id="p-pct">0%</div>
+        <div class="phase-pct-label" id="p-label">0 of 13</div>
+        <div class="phase-track"><div class="phase-fill" id="p-fill"></div></div>
+      </div>
+    </div>
+    <div class="steps" id="ps-steps">
+      <div class="section-label">Open &amp; set up background layers</div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">1</span></div><div class="step-body">
+        <div class="step-text">Open transparent PNG from Blender</div>
+        <div class="step-note">Confirm alpha channel is intact. The product layer should sit on a transparent background before adding anything below it.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">2</span></div><div class="step-body">
+        <div class="step-text">Create solid color layer — <code class="inline">#f1f1f1</code> <span class="tag tag-layer">new layer</span></div>
+        <div class="step-note">Layer menu → New Fill Layer → Solid Color. Simulates a light product listing background for QC.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">3</span></div><div class="step-body">
+        <div class="step-text">Duplicate and set second solid color layer to <code class="inline">#000000</code> <span class="tag tag-layer">new layer</span></div>
+        <div class="step-note">Duplicate the light layer, double-click the color swatch, set to black. Rename to "BG — black" for clarity.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">4</span></div><div class="step-body">
+        <div class="step-text">Drag both background layers beneath the product layer</div>
+        <div class="step-note">Stack order from bottom: black BG → light BG → product PNG. Toggle visibility on each to switch QC backgrounds.</div>
+      </div></div>
+
+      <div class="section-label">Build adjustment layer stack</div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">5</span></div><div class="step-body">
+        <div class="step-text">Create Brightness &amp; Contrast adjustment layer <span class="tag tag-layer">adj. layer</span></div>
+        <div class="step-note">Clip to the product layer (Alt+click between layers) so it only affects the product, not the backgrounds.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">6</span></div><div class="step-body">
+        <div class="step-text">Create Levels adjustment layer <span class="tag tag-layer">adj. layer</span></div>
+        <div class="step-note">Clip to product layer. Bring in the black and white points — helps labels read cleanly without blowing out highlights.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">7</span></div><div class="step-body">
+        <div class="step-text">Create Hue &amp; Saturation adjustment layer <span class="tag tag-layer">adj. layer</span></div>
+        <div class="step-note">Clip to product layer. Fine-tune color accuracy against the physical product or brand standards.</div>
+      </div></div>
+
+      <div class="section-label">Adjust tone &amp; QC</div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">8</span></div><div class="step-body">
+        <div class="step-text">Dial in Brightness/Contrast, Levels, and Hue/Sat adjustments</div>
+        <div class="step-note">Work iteratively. Prioritize label text legibility and accurate color over dramatic correction.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">9</span></div><div class="step-body">
+        <div class="step-text">Toggle light background visible — check edits <span class="tag tag-qc">QC</span></div>
+        <div class="step-note">Show the #f1f1f1 layer. Confirm label text is legible and product edges are clean with no fringe.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">10</span></div><div class="step-body">
+        <div class="step-text">Toggle black background visible — check edits <span class="tag tag-qc">QC</span></div>
+        <div class="step-note">Show the black BG layer. Look for halos, edge artifacts, and whether light-colored label text still reads clearly.</div>
+      </div></div>
+
+      <div class="section-label">Smart object &amp; highlights refinement</div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">11</span></div><div class="step-body">
+        <div class="step-text">Convert product layer to Smart Object</div>
+        <div class="step-note">Right-click the product layer → Convert to Smart Object. Enables non-destructive filter adjustments.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">12</span></div><div class="step-body">
+        <div class="step-text">Apply Shadows/Highlights and adjust to improve text legibility</div>
+        <div class="step-note">Image → Adjustments → Shadows/Highlights. Pull back blown highlights on the label surface so text stands out — especially where label color is close to the container color.</div>
+      </div></div>
+
+      <div class="section-label">Export</div>
+      <div class="step" onclick="toggleStep(this,'p')"><div class="step-num"><span class="n">13</span></div><div class="step-body">
+        <div class="step-text">Hide both background layers, export as transparent PNG <span class="tag tag-export">PNG</span></div>
+        <div class="step-note">Turn off both solid color layers before exporting. Use Export As to preserve alpha. Confirm the canvas shows as transparent in preview.</div>
+      </div></div>
+    </div>
+    <div class="actions">
+      <button class="btn-reset" onclick="resetPhase('ps-steps','p')">Reset phase</button>
+      <button class="btn-next" onclick="switchPhase(2)">Next: Illustrator →</button>
+    </div>
+  </div>
+
+  <!-- Phase 2: Illustrator -->
+  <div class="phase-panel" id="phase-2">
+    <div class="phase-header">
+      <div class="phase-meta">
+        <div class="phase-title">Illustrator — NetSuite export</div>
+        <div class="phase-sub-text">Size and place the image within the standardized product photo template.</div>
+      </div>
+      <div class="phase-progress">
+        <div class="phase-pct" id="i-pct">0%</div>
+        <div class="phase-pct-label" id="i-label">0 of 4</div>
+        <div class="phase-track"><div class="phase-fill" id="i-fill"></div></div>
+      </div>
+    </div>
+    <div class="steps" id="ai-steps">
+      <div class="step" onclick="toggleStep(this,'i')"><div class="step-num"><span class="n">1</span></div><div class="step-body">
+        <div class="step-text">Open the Product Photos project in Illustrator</div>
+        <div class="step-note">This file contains NetSuite canvas dimensions and the standard background color for product images.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'i')"><div class="step-num"><span class="n">2</span></div><div class="step-body">
+        <div class="step-text">Place the transparent PNG and size to match the product line</div>
+        <div class="step-note">Use existing product images as size references. Align to the established visual scale — height, position, visual weight.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'i')"><div class="step-num"><span class="n">3</span></div><div class="step-body">
+        <div class="step-text">Compare against other product images <span class="tag tag-qc">QC</span></div>
+        <div class="step-note">Toggle visibility of neighboring products to confirm this image sits consistently within the set.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'i')"><div class="step-num"><span class="n">4</span></div><div class="step-body">
+        <div class="step-text">Export as JPG <span class="tag tag-export">JPG</span></div>
+        <div class="step-note">File → Export → Export As. Match resolution and quality settings to the NetSuite standard.</div>
+      </div></div>
+    </div>
+    <div class="actions">
+      <button class="btn-reset" onclick="resetPhase('ai-steps','i')">Reset phase</button>
+      <button class="btn-next" onclick="switchPhase(3)">Next: Deliver →</button>
+    </div>
+  </div>
+
+  <!-- Phase 3: Deliver -->
+  <div class="phase-panel" id="phase-3">
+    <div class="phase-header">
+      <div class="phase-meta">
+        <div class="phase-title">Deliver to Garrett</div>
+        <div class="phase-sub-text">Hand off the final JPG for NetSuite upload.</div>
+      </div>
+      <div class="phase-progress">
+        <div class="phase-pct" id="d-pct">0%</div>
+        <div class="phase-pct-label" id="d-label">0 of 2</div>
+        <div class="phase-track"><div class="phase-fill" id="d-fill"></div></div>
+      </div>
+    </div>
+    <div class="steps" id="deliver-steps">
+      <div class="step" onclick="toggleStep(this,'d')"><div class="step-num"><span class="n">1</span></div><div class="step-body">
+        <div class="step-text">Send JPG to Garrett Soong</div>
+        <div class="step-note">Include the product name and item code. Note any color or size changes from the previous version.</div>
+      </div></div>
+      <div class="step" onclick="toggleStep(this,'d')"><div class="step-num"><span class="n">2</span></div><div class="step-body">
+        <div class="step-text">Confirm Garrett has what he needs for NetSuite upload</div>
+        <div class="step-note">Wait for upload confirmation or flag if the image needs revision.</div>
+      </div></div>
+    </div>
+    <div class="complete-msg" id="deliver-complete">
+      <div class="complete-check">✓</div>
+      <h3>Workflow complete</h3>
+      <p>Image delivered and ready for NetSuite upload.</p>
+      <button class="btn-reset" style="margin-top:1rem" onclick="resetAll()">Start over</button>
+    </div>
+    <div class="actions" id="deliver-actions">
+      <button class="btn-reset" onclick="resetPhase('deliver-steps','d')">Reset phase</button>
+    </div>
+  </div>
+
+  <!-- File Naming Reference -->
+  <div class="naming-section">
+    <div class="naming-header">
+      <div>
+        <div class="naming-header-text">File naming reference</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px;">Convention: ItemCode(descriptor1)(descriptor2) — no spaces</div>
+      </div>
+    </div>
+    <div class="naming-body">
+      <div class="naming-rule">
+        <div class="naming-label">Blender render</div>
+        <div class="naming-content">
+          <div class="naming-example">ItemCode(render)(v1)</div>
+          <div class="naming-note">Raw render out of Blender. Increment version number on re-renders.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="naming-rule">
+        <div class="naming-label">Photoshop</div>
+        <div class="naming-content">
+          <div class="naming-example">ItemCode(PS)(v1)</div>
+          <div class="naming-note">Working PSD and transparent PNG export from Photoshop.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="naming-rule">
+        <div class="naming-label">Final JPG</div>
+        <div class="naming-content">
+          <div class="naming-example">ItemCode(NetSuite)(product-image)</div>
+          <div class="naming-note">Final file sent to Garrett for upload. Match exactly to the item code in NetSuite.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const counts = { b:0, p:0, i:0, d:0 };
+const totals = { b:5, p:13, i:4, d:2 };
+const totalAll = 24;
+
+function toggleStep(el, key) {
+  const wasDone = el.classList.contains('done');
+  el.classList.toggle('done');
+  counts[key] += wasDone ? -1 : 1;
+  updateProgress(key);
+  updateOverall();
+}
+
+function updateProgress(key) {
+  const c = counts[key], t = totals[key];
+  const pct = Math.round((c / t) * 100);
+  const fill = document.getElementById(key + '-fill');
+  const label = document.getElementById(key + '-label');
+  const pctEl = document.getElementById(key + '-pct');
+  if (fill) fill.style.width = pct + '%';
+  if (label) label.textContent = c + ' of ' + t;
+  if (pctEl) pctEl.textContent = pct + '%';
+  const navCount = document.getElementById('nav-count-' + ['b','p','i','d'].indexOf(key));
+  if (navCount) navCount.textContent = c + ' / ' + t;
+  if (key === 'd' && c === t) {
+    document.getElementById('deliver-complete').style.display = 'block';
+    document.getElementById('deliver-actions').style.display = 'none';
+  } else if (key === 'd') {
+    document.getElementById('deliver-complete').style.display = 'none';
+    document.getElementById('deliver-actions').style.display = 'flex';
+  }
+}
+
+function updateOverall() {
+  const total = counts.b + counts.p + counts.i + counts.d;
+  const pct = Math.round((total / totalAll) * 100);
+  document.getElementById('overall-fill').style.width = pct + '%';
+  document.getElementById('overall-pct').textContent = pct + '%';
+}
+
+function resetPhase(stepsId, key) {
+  document.getElementById(stepsId).querySelectorAll('.step').forEach(s => s.classList.remove('done'));
+  counts[key] = 0;
+  updateProgress(key);
+  updateOverall();
+}
+
+function resetAll() {
+  [['blender-steps','b'],['ps-steps','p'],['ai-steps','i'],['deliver-steps','d']]
+    .forEach(([id,k]) => resetPhase(id,k));
+  switchPhase(0);
+}
+
+function switchPhase(idx) {
+  const keys = ['b','p','i','d'];
+  document.querySelectorAll('.phase-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+  document.querySelectorAll('.phase-panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.getElementById('nav-count-' + idx).textContent = counts[keys[idx]] + ' / ' + totals[keys[idx]];
+}
+
+['b','p','i','d'].forEach((k,i) => {
+  document.getElementById('nav-count-' + i).textContent = '0 / ' + totals[k];
+});
+</script>
+
+</body>
+</html>
